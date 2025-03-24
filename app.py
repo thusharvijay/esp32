@@ -89,7 +89,7 @@ def classify_image():
         
         # For this example, let's say we have categories like "garbage", "recycling", "compost"
         # Adjust these class names based on your actual model
-        class_names = ["garbage", "recycling", "compost", "other"]
+        class_names = ["Plastic", "Paper", "Metal", "WetWaste"]
         
         # Get the index of the highest confidence
         prediction_index = np.argmax(results)
