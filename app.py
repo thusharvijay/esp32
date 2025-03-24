@@ -19,9 +19,7 @@ def load_model():
     print("Model loaded successfully")
 
 # Load the model when the application starts
-@app.before_first_request
-def initialize():
-    load_model()
+load_model()  # Load model on startup instead of using before_first_request
 
 @app.route('/')
 def home():
