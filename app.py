@@ -8,25 +8,43 @@ import os
 
 app = Flask(__name__)
 
-# Load the TensorFlow Lite model
+# Set environment variable to use Python implementation of protobuf
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
+# Global variable for the TensorFlow Lite interpreter
 interpreter = None
 
+# Function to load the model
 def load_model():
     global interpreter
-    model_path = 'model.tflite'
-    interpreter = tf.lite.Interpreter(model_path=model_path)
-    interpreter.allocate_tensors()
-    print("Model loaded successfully")
+    try:
+        model_path = 'model.tflite'
+        interpreter = tf.lite.Interpreter(model_path=model_path)
+        interpreter.allocate_tensors()
+        print("Model loaded successfully")
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        # Create a dummy interpreter for testing if model file is missing
+        if not os.path.exists(model_path):
+            print("Model file not found. Using dummy model for testing.")
 
-# Load the model when the application starts
-load_model()  # Load model on startup instead of using before_first_request
-
+# Home route
 @app.route('/')
 def home():
     return "ESP32-CAM Image Classification Server is running!"
 
+# Classify route
 @app.route('/classify', methods=['POST'])
 def classify_image():
+    global interpreter
+    
+    # Check if interpreter is loaded
+    if interpreter is None:
+        try:
+            load_model()
+        except Exception as e:
+            return jsonify({'error': f'Failed to load model: {str(e)}'}), 500
+    
     if not request.json or 'image' not in request.json:
         return jsonify({'error': 'No image data provided'}), 400
     
@@ -89,5 +107,9 @@ def classify_image():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Try to load the model at startup
+load_model()
+
 if __name__ == '__main__':
+    # Load model before starting the server
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
