@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import numpy as np
 import tensorflow as tf
 from PIL import Image
@@ -7,6 +8,7 @@ import base64
 import os
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Set environment variable to use Python implementation of protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
@@ -18,20 +20,25 @@ interpreter = None
 def load_model():
     global interpreter
     try:
-        model_path = 'model.tflite'
+        # Use absolute path or ensure the model is in the correct directory
+        model_path = os.path.join(os.path.dirname(__file__), 'model.tflite')
+        
+        if not os.path.exists(model_path):
+            print(f"Model file not found at {model_path}")
+            return None
+        
         interpreter = tf.lite.Interpreter(model_path=model_path)
         interpreter.allocate_tensors()
         print("Model loaded successfully")
+        return interpreter
     except Exception as e:
         print(f"Error loading model: {e}")
-        # Create a dummy interpreter for testing if model file is missing
-        if not os.path.exists(model_path):
-            print("Model file not found. Using dummy model for testing.")
+        return None
 
 # Home route
 @app.route('/')
 def home():
-    return "ESP32-CAM Image Classification Server is running!"
+    return "Waste Classification AI Server is running!"
 
 # Classify route
 @app.route('/classify', methods=['POST'])
@@ -40,10 +47,9 @@ def classify_image():
     
     # Check if interpreter is loaded
     if interpreter is None:
-        try:
-            load_model()
-        except Exception as e:
-            return jsonify({'error': f'Failed to load model: {str(e)}'}), 500
+        interpreter = load_model()
+        if interpreter is None:
+            return jsonify({'error': 'Failed to load model'}), 500
     
     if not request.json or 'image' not in request.json:
         return jsonify({'error': 'No image data provided'}), 400
@@ -65,8 +71,9 @@ def classify_image():
         if img.mode != 'RGB':
             img = img.convert('RGB')
         
-        # Normalize the image
-        img_array = np.array(img, dtype=np.uint8)
+        # Normalize the image (convert to float and scale)
+        img_array = np.array(img, dtype=np.float32)
+        img_array = (img_array / 255.0) - 0.5  # Normalize to [-0.5, 0.5]
         
         # Reshape for the model input
         input_tensor = np.expand_dims(img_array, axis=0)
@@ -87,8 +94,7 @@ def classify_image():
         # Get the prediction results
         results = np.squeeze(output_data)
         
-        # For this example, let's say we have categories like "garbage", "recycling", "compost"
-        # Adjust these class names based on your actual model
+        # Predefined class names (adjust based on your model)
         class_names = ["Plastic", "Paper", "Metal", "WetWaste"]
         
         # Get the index of the highest confidence
@@ -105,11 +111,13 @@ def classify_image():
         })
     
     except Exception as e:
+        print(f"Classification error: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Try to load the model at startup
-load_model()
+# Ensure model is loaded at startup
+interpreter = load_model()
 
+# Corrected main block
 if __name__ == '__main__':
     # Load model before starting the server
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
