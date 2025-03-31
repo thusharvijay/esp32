@@ -72,8 +72,7 @@ def classify_image():
             img = img.convert('RGB')
         
         # Normalize the image (convert to float and scale)
-        img_array = np.array(img, dtype=np.float32)
-        img_array = (img_array / 255.0) - 0.5  # Normalize to [-0.5, 0.5]
+        img_array = np.array(img, dtype=np.uint8)
         
         # Reshape for the model input
         input_tensor = np.expand_dims(img_array, axis=0)
