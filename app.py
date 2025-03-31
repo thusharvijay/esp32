@@ -98,12 +98,7 @@ def classify_image():
         
         # Get the index of the highest confidence
         prediction_index = np.argmax(results)
-        confidence = float(results[prediction_index]) * 100  # Convert to percentage
-        # If the confidence is typically very high (e.g., in hundreds or thousands)
-        # Scale it down to a 0-100 range
-        if confidence > 100:
-            # Assuming the max possible value is 255
-            confidence = (confidence / 255) * 100
+        confidence = float(results[prediction_index])  # Convert to percentage
         
         # Get the predicted class name
         predicted_class = class_names[prediction_index]
