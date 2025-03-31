@@ -91,29 +91,36 @@ def classify_image():
         output_data = interpreter.get_tensor(output_details[0]['index'])
 
         # Get the prediction results
+        # After getting output_data
         results = np.squeeze(output_data)
         
-        # Apply softmax to convert logits to probabilities
-        def softmax(x):
-            exp_x = np.exp(x - np.max(x))
-            return exp_x / exp_x.sum()
-        
-        results = softmax(results)
-        
-        # Predefined class names (adjust based on your model)
-        class_names = ["Plastic", "Paper", "Metal", "WetWaste"]
-
-        # Get the index of the highest confidence
+        # Get all classes and scores before any processing
         prediction_index = np.argmax(results)
-        confidence = float(results[prediction_index]) * 100  # Convert to percentage
+        raw_confidence = float(results[prediction_index])
         
-        # Get the predicted class name
+        # Check if outputs are already probabilities
+        if np.sum(results) > 0.9 and np.sum(results) < 1.1 and np.all(results >= 0) and np.all(results <= 1):
+            # Already probabilities, just multiply by 100
+            confidence = raw_confidence * 100
+        else:
+            # Apply softmax to convert logits to probabilities
+            def softmax(x):
+                exp_x = np.exp(x - np.max(x))
+                return exp_x / exp_x.sum()
+            
+            results_prob = softmax(results)
+            confidence = float(results_prob[prediction_index]) * 100
+        
+        # Predefined class names
+        class_names = ["Plastic", "Paper", "Metal", "WetWaste"]
         predicted_class = class_names[prediction_index]
         
         return jsonify({
             'class': predicted_class,
             'confidence': confidence,
-            'all_scores': results.tolist()
+            'raw_scores': results.tolist(),
+            'raw_confidence': raw_confidence,
+            'predicted_index': int(prediction_index)
         })
     
     except Exception as e:
