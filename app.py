@@ -89,16 +89,23 @@ def classify_image():
         
         # Get the output tensor
         output_data = interpreter.get_tensor(output_details[0]['index'])
-        
+
         # Get the prediction results
         results = np.squeeze(output_data)
         
+        # Apply softmax to convert logits to probabilities
+        def softmax(x):
+            exp_x = np.exp(x - np.max(x))
+            return exp_x / exp_x.sum()
+        
+        results = softmax(results)
+        
         # Predefined class names (adjust based on your model)
         class_names = ["Plastic", "Paper", "Metal", "WetWaste"]
-        
+
         # Get the index of the highest confidence
         prediction_index = np.argmax(results)
-        confidence = float(results[prediction_index])
+        confidence = float(results[prediction_index]) * 100  # Convert to percentage
         
         # Get the predicted class name
         predicted_class = class_names[prediction_index]
